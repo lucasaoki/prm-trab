@@ -7,17 +7,25 @@
 
 #include <cstdlib>
 
-#include "Robot.h"
-
-
-using namespace std;
+#include <Robot.h>
 
 /*
  * 
  */
 int main(int argc, char** argv) {
 
-    Robot robot;
+    Robot rob("localhost", 6665);
+    //Robot rob(argv[1], argv[2]);
+    if (!rob.initRobot()) {
+        return -1;
+    }
+
+    while (true) {
+
+        rob.update();
+    }
+
+
     return 0;
 }
 
