@@ -2,7 +2,7 @@
  * File:   main.cpp
  * Author: lucasaoki
  *
- * Created on June 14, 2013, 4:50 PM
+ * Created on June 14, 2013, 4-:50 PM
  */
 
 #include <cstdlib>

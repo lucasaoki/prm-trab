@@ -19,20 +19,36 @@
 #include <opencv/highgui.h>
 #endif
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <math.h>
+#include <cstdlib>
+//#include <string.h>
+#include <cstdio>
+#include <cmath>
 
 #include <libplayerc/playerc.h>
+#include "LocalMap.h"
+
+#define MAX_SPEED 0.15
 
 class Robot {
 public:
-    Robot();
+    Robot(const char *ip, int port);
     Robot(const Robot& orig);
     virtual ~Robot();
+
+    bool initRobot();
+    void update();
 private:
 
+    bool _free;
+    int _port;
+    char _ipAdr[20];
+
+    // Player-Stage Variables
+    playerc_client_t *_client;
+    playerc_position2d_t *_position2d;
+    playerc_laser_t *_laser;
+
+    LocalMap _localMap;
 };
 
 #endif	/* ROBOT_H */
