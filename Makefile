@@ -26,4 +26,4 @@ prm-trab: $(ODIR)/main.o $(ODIR)/Robot.o $(ODIR)/LocalMap.o
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core $(OUTDIR)/*
+	rm -f $(ODIR)/*.o *~ core $(OUTDIR)/* $(BINDIR)/*
