@@ -18,7 +18,7 @@
 #include <opencv/highgui.h>
 #endif
 
-#include <player-3.0/libplayerc++/playerc++.h>
+#include <libplayerc/playerc.h>
 
 #define WIN_WIDTH 400
 #define WIN_HEIGHT 400
@@ -39,9 +39,9 @@ public:
     void createWindow();
     void updateMap(playerc_laser_t *laser); //trocar nome?
 
-private:
     // OpenCV Variables  
     char _windowName[30];
+private:
     int _line_type; // change it to 8 to see non-antialiased graphics
     CvPoint _pt1, _pt2;
     IplImage* _image;

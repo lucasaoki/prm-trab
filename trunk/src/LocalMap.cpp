@@ -5,7 +5,7 @@
  * Created on June 14, 2013, 5:48 PM
  */
 
-#include "LocalMap.h"
+#include <LocalMap.h>
 
 LocalMap::LocalMap() {
 

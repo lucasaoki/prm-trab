@@ -25,7 +25,7 @@
 #include <cmath>
 
 #include <libplayerc/playerc.h>
-#include "LocalMap.h"
+#include <LocalMap.h>
 
 #define MAX_SPEED 0.15
 
@@ -37,11 +37,19 @@ public:
 
     bool initRobot();
     void update();
+    void tracking();
+    void zeroMark();
+    void lost_detection(IplImage *image);
 private:
 
     bool _free;
     int _port;
     char _ipAdr[20];
+
+    int LMark[690];
+    double avg, ang;
+    bool get_obj, det_, end;
+    int middle_angle;
 
     // Player-Stage Variables
     playerc_client_t *_client;
@@ -49,6 +57,10 @@ private:
     playerc_laser_t *_laser;
 
     LocalMap _localMap;
+
+    CvPoint pt1, pt2;
+    IplImage* image;
+    int width, height;
 };
 
 #endif	/* ROBOT_H */
