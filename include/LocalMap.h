@@ -40,11 +40,12 @@ public:
     void updateMap(playerc_laser_t *laser); //trocar nome?
 
     // OpenCV Variables  
-    char _windowName[30];
+    char _windowName[30];    
+    IplImage* _image;
 private:
     int _line_type; // change it to 8 to see non-antialiased graphics
     CvPoint _pt1, _pt2;
-    IplImage* _image;
+
     int _width, _height;
 };
 

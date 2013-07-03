@@ -11,17 +11,19 @@ using namespace std;
 
 Robot::Robot(const char *ip, int port) {
 
-    cout << "Connecting:" << endl;
+	printf("Connecting:\n");
     strcpy(_ipAdr, ip);
     _port = port;
-    cout << "Ip: " << _ipAdr << endl << "Port: " << _port << endl;
+	printf("Ip: %s\nPort: %d\n", _ipAdr, _port);
 
-
+    newspeed = 0;
+    newturnrate = 0;
     avg, ang = 0,2;
     get_obj = false;
     det_ = false;
     end = false;
     middle_angle = 343;    
+    leng_min = 0.7;
 }
 
 Robot::Robot(const Robot& orig) {
@@ -30,7 +32,9 @@ Robot::Robot(const Robot& orig) {
 Robot::~Robot() {
 
     playerc_laser_unsubscribe(_laser);
+    //playerc_ranger_unsubscribe(ranger);
     playerc_laser_destroy(_laser);
+    //playerc_ranger_destroy(ranger);
     playerc_client_disconnect(_client);
     playerc_client_destroy(_client);
 }
@@ -51,6 +55,21 @@ bool Robot::initRobot() {
     // Enable motor control
     playerc_position2d_enable(_position2d, 1);
 
+    //#define RANGER___ 1
+    #ifdef RANGER___
+    // Subscrite Ranger and Laser
+    ranger = playerc_ranger_create(_client, 0);
+    if (playerc_ranger_subscribe(ranger, PLAYERC_OPEN_MODE))
+        return -1;
+    #endif
+
+
+    int i;
+    printf("Warming up laser...\n"); 
+    for (i = 0; i < 100000; i++) 
+        printf("%d\r", i);
+    printf ("\n");
+
     // Connect to Laser
     _laser = playerc_laser_create(_client, 0);
     if (playerc_laser_subscribe(_laser, PLAYERC_OPEN_MODE)) {
@@ -58,37 +77,38 @@ bool Robot::initRobot() {
     }
 
     // Read several times the robot data (delay)
+    printf("Warming up laser...\n"); 
+    for (i = 0; i < 100000; i++) 
+        printf("%d\r", i);
+    printf ("\n");
+    
     playerc_client_read(_client);
     playerc_client_read(_client);
     playerc_client_read(_client);
     playerc_client_read(_client);
     playerc_client_read(_client);
-
+    playerc_client_read(_client);
+    playerc_client_read(_client);
+    playerc_client_read(_client);
+    
     return true;
 }
+
 
 void Robot::update() {
 
     playerc_client_read(_client);
-
-    _free = true;
-
-    for (int i = FIRST_LASER; i < LAST_LASER; i++) {
-
-        if (_laser->scan[i][0] < 0.5) {
-            // _free = false;
+    if(!emergencyStop()) {
+        
+        tracking();
+        follow();
+        if (!det_)
+        {
+            lost_detection();
         }
-    }
-    tracking();
-    _localMap.updateMap(_laser);
-
-    if (_free) {
-        playerc_position2d_set_cmd_vel(_position2d, 0.2, 0, 0.0, 1);
-    } else {
-        playerc_position2d_set_cmd_vel(_position2d, 0.0, 0, 0.4, 1);
+        //_localMap.updateMap(_laser);
     }
 }
-
 
 void Robot::tracking(){
 
@@ -96,12 +116,14 @@ void Robot::tracking(){
     int LAng = 0, RAng = 0;
     double x, y;
     
-    cvZero(image);
-    pt1.x = 400;
+    //playerc_client_read(_client);
+    cvZero(_localMap._image);
+    
+    pt1.x = 200;
     pt1.y = WIN_HEIGHT;
-    pt2.x = 400;
-    pt2.y = WIN_HEIGHT - 400;
-    cvLine(image, pt1, pt2, CV_RGB(0, 0, 255), 2, CV_AA, 0);
+    pt2.x = 200;
+    pt2.y = WIN_HEIGHT - 200;
+    cvLine(_localMap._image, pt1, pt2, CV_RGB(0, 0, 255), 2, CV_AA, 0);
 
     zeroMark();
     RAng = LAng = avg;
@@ -116,11 +138,15 @@ void Robot::tracking(){
         RAng++;
     }
 
-    avg = (LAng + RAng) / 2;
-
-    if(fabs(LAng-RAng) < 0,1){
+    if(fabs(_laser->scan[avg][0]) > 4){
+        
         det_ = false;
+        printf("Perdeu o alvo!!!\n");
     } else {
+
+        avg = (LAng + RAng) / 2;
+        printf("Tracking do alvo - avg = %d\n", avg);
+
         for (i = 85; i < 595; i++) {
             if (_laser->scan[i][0] < 3.95 && _laser->scan[i][0] > 0.05) {
 
@@ -129,98 +155,171 @@ void Robot::tracking(){
                 y = _laser->scan[i][0]
                         * sin(_laser->scan[i][1] + 3.1415926 / 2.0);
 
-                pt1.x = (int) (x * 100 + 400); 
-                pt1.y = (int) (WIN_HEIGHT - y * 100); 
+                pt1.x = (int) (x * 40 + WIN_WIDTH / 2); 
+                pt1.y = (int) (WIN_HEIGHT - y * 40); 
 
                 if (LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2){
                     if(i == avg){
-                        cvCircle(image, pt1, 2, CV_RGB(0, 255, 0), 3, CV_AA, 0);
+                        cvCircle(_localMap._image, pt1, 2, CV_RGB(0, 255, 0), 3, CV_AA, 0);
                     }
                     else
-                        cvCircle(image, pt1, 2, CV_RGB(255, 0, 0), 1, CV_AA, 0);
+                        cvCircle(_localMap._image, pt1, 2, CV_RGB(255, 0, 0), 1, CV_AA, 0);
                 }
                 else
-                    cvCircle(image, pt1, 2, CV_RGB(255, 255, 255), 1, CV_AA, 0);
+                    cvCircle(_localMap._image, pt1, 2, CV_RGB(255, 255, 255), 1, CV_AA, 0);
             }
         }
     }
-    cvShowImage(_localMap._windowName, image);
+    cvShowImage(_localMap._windowName, _localMap._image);
     cvWaitKey(10);
-    
 }
+
 void Robot::zeroMark(){
     for (int i = 0; i < 690; i++)
         LMark[i] = 0;
 }
-/*
-void Robot::lost_detection(IplImage* image){
-    boolean livre = true;
-    int LAng[690];
-    int i, angmin, angmax, LDataOk = 0;
-    float LData[690];
 
-    while(get_obj){
-        cvZero(image);
+bool Robot::emergencyStop() {
 
-        pt1.x = 400;
-        pt1.y = WIN_HEIGHT;
-        pt2.x = 400;
-        pt2.y = WIN_HEIGHT - 400;
-        cvLine(image, pt1, pt2, CV_RGB(0, 0, 255), 2, CV_AA, 0);
-        get_obj = false;
+    double smallValue = 999;
+    int i = 0;
+    //playerc_client_read(_client);
 
-        for( i = 85; i < 595; i++){
-            if((_laser->scan[i][0]) < 0.5)
-                livre = false;
-            if(!LDataOk){
-                LAng[i] =  _laser->scan[i][1];
-                LAng[i] =  _laser->scan[i][0];
-                if(i==594)
-                    LDataOk++;
-            }
-            else {
-                if(fabs(LData[i] - _laser->scan[i][0]))
-                    LMark[i] = 1;
-                else
-                    LMark[i] = 0;
-            }
-
-            if (_laser->scan[i][0] < 3.95 && _laser->scan[i][0] > 0.05) {
-                x = _laser->scan[i][0]
-                        * cos(_laser->scan[i][1] + 3.1415926 / 2.0);
-                y = _laser->scan[i][0]
-                        * sin(_laser->scan[i][1] + 3.1415926 / 2.0);
-
-                pt1.x = (int) (x * 100 + 400);
-                pt1.y = (int) (WIN_HEIGHT - y * 100);
-
-                if (LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
-                    cvCircle(image, pt1, 2, CV_RGB(255, 0, 0), 1, CV_AA, 0);
-                else
-                    cvCircle(image, pt1, 2, CV_RGB(255, 255, 255), 1,
-                            CV_AA, 0);
-            }
+    for (int i = 10; i < 650; i++)
+    {
+        if (_laser->scan[i][0] < smallValue)
+        {
+            smallValue = _laser->scan[i][0];
         }
-        angmin = -1;
-        angmax = -1;
-        for (i = 85; i < 595; i++) {
-            if ((LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
-                    && angmin == -1)
-                angmin = i;
-            if (LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
-                angmax = i;
-        }
-        if (angmin >= 0 && angmax >= 0) {
-            avg = i = (angmax - angmin) / 2 + angmin;
-            x = _laser->scan[i][0] * cos(_laser->scan[i][1] + 3.1415926 / 2.0);
-            y = _laser->scan[i][0] * sin(_laser->scan[i][1] + 3.1415926 / 2.0);
-            pt1.x = (int) (x * 100 + 400);
-            pt1.y = (int) (WIN_HEIGHT - y * 100);
-            cvCircle(image, pt1, 4, CV_RGB(0, 255, 0), 1, CV_AA, 0);
-            get_obj = true;
-        }
-        cvShowImage(wndname, image);
-        cvWaitKey(10);
     }
+
+    if (smallValue < MIN_DIST)
+    {
+        playerc_position2d_set_cmd_vel(_position2d, 0, 0, 0, 1);
+        return true;
+    }
+    return false;
 }
-*/
+
+void Robot::lost_detection(){
+
+	int LAng[690];
+	int i, angmin, angmax, LDataOk = 0;
+	float LData[690];
+	double x,y;
+	get_obj = false;
+
+    //playerc_client_read(_client);
+    printf("Passou....\n");
+
+	zeroMark();
+	while(!get_obj){
+	
+		cvWaitKey(10);
+
+		playerc_client_read(_client);
+		cvZero(_localMap._image);
+
+		pt1.x = 200;
+		pt1.y = WIN_HEIGHT;
+		pt2.x = 200;
+		pt2.y = WIN_HEIGHT - 200;
+		cvLine(_localMap._image, pt1, pt2, CV_RGB(0, 0, 255), 2, CV_AA, 0);
+
+		for( i = 85; i < 595; i++){
+
+			if(!LDataOk){
+				LAng[i] =  _laser->scan[i][1];
+				LData[i] =  _laser->scan[i][0];
+				if(i==594)
+					LDataOk++;
+			}
+			else {
+				if(fabs(LData[i] - _laser->scan[i][0]))
+					LMark[i] = 1;
+				else
+					LMark[i] = 0;
+			}
+
+			if (_laser->scan[i][0] < 3.95 && _laser->scan[i][0] > 0.05) {
+				x = _laser->scan[i][0]
+						* cos(_laser->scan[i][1] + 3.1415926 / 2.0);
+				y = _laser->scan[i][0]
+						* sin(_laser->scan[i][1] + 3.1415926 / 2.0);
+
+                pt1.x = (int) (x * 40 + WIN_WIDTH / 2); 
+                pt1.y = (int) (WIN_HEIGHT - y * 40); 
+
+				if (LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
+					cvCircle(_localMap._image, pt1, 2, CV_RGB(0, 255, 0), 1, CV_AA, 0);
+				else
+					cvCircle(_localMap._image, pt1, 2, CV_RGB(255, 255, 255), 1,
+							CV_AA, 0);
+			}
+		}
+
+		angmin = -1;
+		angmax = -1;
+
+		for (i = 85; i < 595; i++) {
+			if ((LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
+					&& angmin == -1)
+				angmin = i;
+			if (LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
+				angmax = i;
+		}
+		if (angmin >= 0 && angmax >= 0) {
+
+			avg = i = (angmax + angmin) / 2;
+			avg_len = _laser->scan[avg][0];
+
+			x = _laser->scan[i][0] * cos(_laser->scan[i][1] + 3.1415926 / 2.0);
+			y = _laser->scan[i][0] * sin(_laser->scan[i][1] + 3.1415926 / 2.0);
+
+            pt1.x = (int) (x * 40 + WIN_WIDTH / 2); 
+            pt1.y = (int) (WIN_HEIGHT - y * 40); 
+
+			cvCircle(_localMap._image, pt1, 4, CV_RGB(0, 255, 0), 1, CV_AA, 0);
+			printf("Angulo: %f\n",
+					((_laser->scan[i][1] + 3.1415926 / 2.0) * 180) / 3.1415926);
+			
+            get_obj = true;
+            det_ = true;
+		}
+		
+        cvShowImage(_localMap._windowName, _localMap._image);
+		cvWaitKey(10);
+	}
+}
+
+void Robot::follow() {
+
+    newspeed = 0;
+    newturnrate = 0;
+    //playerc_client_read(_client);
+
+    if (det_) {
+        newspeed = MAX_SPEED;
+
+        int diff = avg - LASER_CENTRAL;
+        if (diff < 0) { //está para a direita
+
+            if (diff < -DIST2AVG) //está fora do limite
+            {
+                newturnrate = -TURNSPD; //vira para a direita
+            }
+        } else { //está para esquerda
+
+            if (diff > DIST2AVG) //está fora do limite
+            {
+                newturnrate = TURNSPD; //vira para a esquerda
+            }
+        }
+    }
+
+    if (newspeed > MAX_SPEED)
+    {
+        newspeed = MAX_SPEED;
+    }
+    playerc_position2d_set_cmd_vel(_position2d, newspeed, 0, DTOR(newturnrate), 1);         
+}
