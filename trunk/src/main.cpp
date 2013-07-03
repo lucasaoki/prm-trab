@@ -12,7 +12,7 @@
 /*
  * 
  */
-int main(int argc, char** argv) {
+ int main(int argc, char** argv) {
 
     Robot rob("localhost", 6665);
     //Robot rob(argv[1], argv[2]);
@@ -20,11 +20,11 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    while (true) {
+    rob.lost_detection();
 
+    while(true){
         rob.update();
     }
-
 
     return 0;
 }

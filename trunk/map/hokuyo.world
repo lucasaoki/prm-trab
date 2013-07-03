@@ -43,7 +43,7 @@ define silly position (
 
 silly( 	
   name "block1" 
-  pose [-4.152 0.820 0 0] 
+  pose [-5 -5 0 0] 
   color "green"  
   bitmap "block.png"
 )
