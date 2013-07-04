@@ -18,12 +18,13 @@ Robot::Robot(const char *ip, int port) {
 
     newspeed = 0;
     newturnrate = 0;
-    avg, ang = 0,2;
-    get_obj = false;
+    avg = 343; 
+    ang = 0;
     det_ = false;
     end = false;
     middle_angle = 343;    
     leng_min = 0.7;
+    LDataOk = 0;
 }
 
 Robot::Robot(const Robot& orig) {
@@ -100,17 +101,19 @@ void Robot::update() {
     playerc_client_read(_client);
     if(!emergencyStop()) {
         
-        tracking();
-        follow();
-        if (!det_)
-        {
+        if(det_) {
+            tracking();
+            zeroMark();
+            follow();
+            LDataOk = 0;
+        } else {
             lost_detection();
         }
         //_localMap.updateMap(_laser);
     }
 }
 
-void Robot::tracking(){
+void Robot::tracking() {
 
     int i = 0;
     int LAng = 0, RAng = 0;
@@ -127,25 +130,24 @@ void Robot::tracking(){
 
     zeroMark();
     RAng = LAng = avg;
-
-    while (fabs((double) (_laser->scan[LAng][0] - _laser->scan[LAng - 1][0])) < 0.1) {
-        LMark[LAng] = 1;
-        LAng--;
-    }
-
-    while (fabs(_laser->scan[RAng][0] - _laser->scan[RAng + 1][0]) < 0.1) {
-        LMark[RAng] = 1;
-        RAng++;
-    }
-
     if(fabs(_laser->scan[avg][0]) > 4){
-        
+
         det_ = false;
-        printf("Perdeu o alvo!!!\n");
+        printf(" Perdeu o alvo!!!\n");
     } else {
 
+        while (fabs((double) (_laser->scan[LAng][0] - _laser->scan[LAng - 1][0])) < 0.1) {
+            LMark[LAng] = 1;
+            LAng--;
+        }
+
+        while (fabs(_laser->scan[RAng][0] - _laser->scan[RAng + 1][0]) < 0.1) {
+            LMark[RAng] = 1;
+            RAng++;
+        }
+
         avg = (LAng + RAng) / 2;
-        printf("Tracking do alvo - avg = %d\n", avg);
+        printf("Tracking do alvo - avg = %lf\n", _laser->scan[avg][0]);
 
         for (i = 85; i < 595; i++) {
             if (_laser->scan[i][0] < 3.95 && _laser->scan[i][0] > 0.05) {
@@ -204,92 +206,82 @@ bool Robot::emergencyStop() {
 void Robot::lost_detection(){
 
 	int LAng[690];
-	int i, angmin, angmax, LDataOk = 0;
-	float LData[690];
+	int i, angmin, angmax;
+
 	double x,y;
-	get_obj = false;
 
-    //playerc_client_read(_client);
-    printf("Passou....\n");
+	cvZero(_localMap._image);
 
-	zeroMark();
-	while(!get_obj){
-	
-		cvWaitKey(10);
+	pt1.x = 200;
+	pt1.y = WIN_HEIGHT;
+	pt2.x = 200;
+	pt2.y = WIN_HEIGHT - 200;
+	cvLine(_localMap._image, pt1, pt2, CV_RGB(0, 0, 255), 2, CV_AA, 0);
 
-		playerc_client_read(_client);
-		cvZero(_localMap._image);
+	for( i = 85; i < 595; i++) {
 
-		pt1.x = 200;
-		pt1.y = WIN_HEIGHT;
-		pt2.x = 200;
-		pt2.y = WIN_HEIGHT - 200;
-		cvLine(_localMap._image, pt1, pt2, CV_RGB(0, 0, 255), 2, CV_AA, 0);
-
-		for( i = 85; i < 595; i++){
-
-			if(!LDataOk){
-				LAng[i] =  _laser->scan[i][1];
-				LData[i] =  _laser->scan[i][0];
-				if(i==594)
-					LDataOk++;
-			}
-			else {
-				if(fabs(LData[i] - _laser->scan[i][0]))
-					LMark[i] = 1;
-				else
-					LMark[i] = 0;
-			}
-
-			if (_laser->scan[i][0] < 3.95 && _laser->scan[i][0] > 0.05) {
-				x = _laser->scan[i][0]
-						* cos(_laser->scan[i][1] + 3.1415926 / 2.0);
-				y = _laser->scan[i][0]
-						* sin(_laser->scan[i][1] + 3.1415926 / 2.0);
-
-                pt1.x = (int) (x * 40 + WIN_WIDTH / 2); 
-                pt1.y = (int) (WIN_HEIGHT - y * 40); 
-
-				if (LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
-					cvCircle(_localMap._image, pt1, 2, CV_RGB(0, 255, 0), 1, CV_AA, 0);
-				else
-					cvCircle(_localMap._image, pt1, 2, CV_RGB(255, 255, 255), 1,
-							CV_AA, 0);
-			}
+		if(!LDataOk){
+			LAng[i] =  _laser->scan[i][1];
+			LData[i] =  _laser->scan[i][0];
+			if(i == 594)
+				LDataOk++;
+		}
+		else {
+			if(fabs(LData[i] - _laser->scan[i][0])){
+				LMark[i] = 1;
+            }
+			else
+				LMark[i] = 0;
 		}
 
-		angmin = -1;
-		angmax = -1;
-
-		for (i = 85; i < 595; i++) {
-			if ((LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
-					&& angmin == -1)
-				angmin = i;
-			if (LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
-				angmax = i;
-		}
-		if (angmin >= 0 && angmax >= 0) {
-
-			avg = i = (angmax + angmin) / 2;
-			avg_len = _laser->scan[avg][0];
-
-			x = _laser->scan[i][0] * cos(_laser->scan[i][1] + 3.1415926 / 2.0);
-			y = _laser->scan[i][0] * sin(_laser->scan[i][1] + 3.1415926 / 2.0);
+		if (_laser->scan[i][0] < 3.95 && _laser->scan[i][0] > 0.05) {
+			x = _laser->scan[i][0]
+					* cos(_laser->scan[i][1] + 3.1415926 / 2.0);
+			y = _laser->scan[i][0]
+					* sin(_laser->scan[i][1] + 3.1415926 / 2.0);
 
             pt1.x = (int) (x * 40 + WIN_WIDTH / 2); 
             pt1.y = (int) (WIN_HEIGHT - y * 40); 
 
-			cvCircle(_localMap._image, pt1, 4, CV_RGB(0, 255, 0), 1, CV_AA, 0);
-			printf("Angulo: %f\n",
-					((_laser->scan[i][1] + 3.1415926 / 2.0) * 180) / 3.1415926);
-			
-            get_obj = true;
-            det_ = true;
+			if (LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
+				cvCircle(_localMap._image, pt1, 2, CV_RGB(0, 255, 0), 1, CV_AA, 0);
+			else
+				cvCircle(_localMap._image, pt1, 2, CV_RGB(255, 255, 255), 1,
+						CV_AA, 0);
 		}
-		
-        cvShowImage(_localMap._windowName, _localMap._image);
-		cvWaitKey(10);
 	}
+
+	angmin = -1;
+	angmax = -1;
+
+	for (i = 85; i < 595; i++) {
+		if ((LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
+				&& angmin == -1)
+			angmin = i;
+		if (LMark[i] + LMark[i - 1] + LMark[i - 2] + LMark[i - 3] > 2)
+			angmax = i;
+	}
+	if (angmin >= 0 && angmax >= 0) {
+
+		avg = i = (angmax + angmin) / 2;
+        printf("angulo: D: %d E: %diff\n",angmin,angmax);
+		avg_len = _laser->scan[avg][0];
+
+		x = _laser->scan[i][0] * cos(_laser->scan[i][1] + 3.1415926 / 2.0);
+		y = _laser->scan[i][0] * sin(_laser->scan[i][1] + 3.1415926 / 2.0);
+
+        pt1.x = (int) (x * 40 + WIN_WIDTH / 2); 
+        pt1.y = (int) (WIN_HEIGHT - y * 40); 
+
+		cvCircle(_localMap._image, pt1, 4, CV_RGB(0, 255, 0), 1, CV_AA, 0);
+		printf("Angulo: %f\n",
+				((_laser->scan[i][1] + 3.1415926 / 2.0) * 180) / 3.1415926);
+		
+        det_ = true;
+	}
+	
+    cvShowImage(_localMap._windowName, _localMap._image);
+	cvWaitKey(10);
 }
 
 void Robot::follow() {
