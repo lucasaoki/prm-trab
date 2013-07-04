@@ -29,7 +29,7 @@
 
 #define MAX_SPEED 0.15
 #define SPEED_ACEL 0.01
-#define TURNSPD 20
+#define TURNSPD 40 
 #define DIST2AVG 25 // feixes em relação ao central
 #define MIN_DIST 0.5 //dist min de qualquer objeto
 #define LASER_CENTRAL 343
@@ -57,9 +57,9 @@ private:
 
     double newspeed;
     double newturnrate;
-
+    float LData[690];
     int LMark[690];
-    int avg;
+    int avg, LDataOk;
     int middle_angle;
     bool get_obj, end;
     double ang, leng_min,avg_len;

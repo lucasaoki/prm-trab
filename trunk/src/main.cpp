@@ -20,8 +20,7 @@
         return -1;
     }
 
-    rob.lost_detection();
-
+    rob.zeroMark();
     while(true){
         rob.update();
     }
