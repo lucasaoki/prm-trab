@@ -1,0 +1,75 @@
+# hokuyo.world - basic world file example
+# $Id$
+
+include "pioneer.inc"
+include "map.inc"
+include "hokuyo.inc"
+
+# time to pause (in GUI mode) or quit (in headless mode (-g)) the simulation
+quit_time 3600 # 1 hour of simulated time
+
+paused 1
+
+resolution 0.02
+
+# configure the GUI window
+window
+(
+  size [ 635.000 666.000 ] # in pixels
+  scale 37.481   # pixels per meter
+  center [ 0  0 ]
+  rotate [ 0  0 ]
+  			
+  show_data 1              # 1=on 0=off
+)
+
+# load an environment bitmap
+floorplan
+( 
+  name "m1"
+  size [16.000 16.000 0.800]
+  pose [0 0 0 0]
+  bitmap "bitmaps/m1.png"
+)
+
+# a silly object to look at
+define silly position ( 	
+  size [1.000 1.000 0.500]
+  fiducial_return 22
+  laser_return 2
+  gui_outline 1
+  gripper_return 1
+)
+
+silly( 	
+  name "block1" 
+  pose [1 1 0 0] 
+  color "green"  
+  bitmap "bitmaps/block.png"
+)
+
+silly( 	
+  name "Pablo" 
+  pose [-5 1 0 0] 
+  color "blue"  
+  bitmap "bitmaps/space_invader.png"
+)
+
+pioneer2dx
+(		  
+  # can refer to the robot by this name
+  name "r0"
+  pose [ -2 1 0 0 ] 
+
+  hokuyolaser(	
+  #sicklaser(   
+    #  ctrl "lasernoise"  # uncomment this line to run a laser noise generator
+  )
+ 
+  # ctrl "wander"
+
+  # report error-free position in world coordinates
+  localization "gps"
+  localization_origin [ 0 0 0 0 ]
+)
+
