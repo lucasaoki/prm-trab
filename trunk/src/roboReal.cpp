@@ -56,7 +56,7 @@ bool Robot::initRobot() {
     // Enable motor control
     playerc_position2d_enable(_position2d, 1);
 
-    //#define RANGER___ 1
+    #define RANGER___ 1
     #ifdef RANGER___
     // Subscrite Ranger and Laser
     ranger = playerc_ranger_create(_client, 0);
