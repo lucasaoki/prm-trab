@@ -29,7 +29,7 @@
 
 #define MAX_SPEED 0.15
 #define SPEED_ACEL 0.01
-#define TURNSPD 40 
+#define TURNSPD 30 
 #define DIST2AVG 25 // feixes em relação ao central
 #define MIN_DIST 0.5 //dist min de qualquer objeto
 #define LASER_CENTRAL 343

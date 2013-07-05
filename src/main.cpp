@@ -14,8 +14,12 @@
  */
  int main(int argc, char** argv) {
 
-    Robot rob("localhost", 6665);
-    //Robot rob(argv[1], argv[2]);
+    char ip[20] = "localhost";
+    if (argc == 2)
+        strcpy(ip, argv[1]);
+
+    Robot rob(ip, 6665);
+
     if (!rob.initRobot()) {
         return -1;
     }

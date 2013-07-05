@@ -29,7 +29,7 @@ floorplan
   name "cave"
   size [200.000 200.000 0.800]
   pose [0 0 0 0]
-  bitmap "empty.png"
+  bitmap "bitmaps/empty.png"
 )
 
 # a silly object to look at
@@ -45,7 +45,7 @@ silly(
   name "block1" 
   pose [-5 -5 0 0] 
   color "green"  
-  bitmap "block.png"
+  bitmap "bitmaps/block.png"
 )
 
 silly( 	
